@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -20,7 +21,7 @@ func Load(path string) (*Config, error) {
 	err = toml.Unmarshal(configFile, &config)
 
 	if err != nil {
-		return nil, fmt.Errorf("load: %q", err)
+		return nil, fmt.Errorf("load: %w", err)
 	}
 
 	return &config, nil
@@ -31,10 +32,30 @@ func Save(path string, config *Config) error {
 	file, err := toml.Marshal(config)
 
 	if err != nil {
-		return fmt.Errorf("save: ", err)
+		return fmt.Errorf("save: %w", err)
 	}
 
-	os.WriteFile(path, file, os.FileMode(permission))
+	errWriteFile := os.WriteFile(path, file, os.FileMode(permission))
+
+	if errWriteFile != nil {
+		return fmt.Errorf("save: %w", errWriteFile)
+	}
+
+	return nil
+}
+
+func SaveInitial(path string) error {
+	config := Config{Version: 1}
+
+	// TODO: Add syncing with existing configuration. There might be something existing,
+	// therefore this need to be added
+
+	err := Save(path, &config)
+
+	if err != nil {
+		return fmt.Errorf("save initial: %s, %q, %w", path, config, err)
+	}
+
 	return nil
 }
 
@@ -42,13 +63,13 @@ func initConfigIfNeeded() error {
 	homeDir, err := os.UserHomeDir()
 
 	if err != nil {
-		return fmt.Errorf("initConfigIfNeeded: %q", err)
+		return fmt.Errorf("initConfigIfNeeded: %w", err)
 	}
 
 	configExists, err := configExists(homeDir)
 
 	if err != nil {
-		fmt.Errorf("init config if needed: %q", err)
+		return fmt.Errorf("init config if needed: %w", err)
 	}
 
 	if configExists {
@@ -57,7 +78,7 @@ func initConfigIfNeeded() error {
 
 	errNewConfig := createNewConfig(homeDir)
 	if errNewConfig != nil {
-		return fmt.Errorf("init config if needed: %q", errNewConfig)
+		return fmt.Errorf("init config if needed: %w", errNewConfig)
 	}
 
 	return nil
@@ -65,22 +86,33 @@ func initConfigIfNeeded() error {
 
 func configExists(dir string) (bool, error) {
 	path := filepath.Join(dir, configPath())
-	fileInfo, err := os.Stat(path)
+	_, err := os.Stat(path)
 
-	if errors.Is() {
-		return false, fmt.Errorf("config exists: %q", err)
+	if errors.Is(err, fs.ErrNotExist) {
+		return false, nil
 	}
 
-	return fileInfo.Size() > 0, nil
+	if err != nil {
+		return false, fmt.Errorf("config exists: %s, %w", dir, err)
+	}
+
+	return true, nil
 }
 
 func createNewConfig(dir string) error {
 	path := filepath.Join(dir, configPath())
 
-	_, err := os.Create(path)
+	permission := os.FileMode(0o755)
+	errDir := os.MkdirAll(filepath.Dir(path), permission)
 
-	if err != nil {
-		return fmt.Errorf("create new config: %q, %path", err, path)
+	if errDir != nil {
+		return fmt.Errorf("create new config: %w, %s", errDir, path)
+	}
+
+	errFile := SaveInitial(path)
+
+	if errFile != nil {
+		return fmt.Errorf("create new config: %w, %s", errFile, path)
 	}
 
 	return nil
