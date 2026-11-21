@@ -54,7 +54,7 @@ func SaveInitial(path string) error {
 	err := Save(path, &config)
 
 	if err != nil {
-		return fmt.Errorf("save initial: %s, %q, %w", path, config, err)
+		return fmt.Errorf("save initial: %w", err)
 	}
 
 	return nil
