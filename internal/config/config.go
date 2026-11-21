@@ -10,6 +10,11 @@ import (
 	"github.com/pelletier/go-toml/v2"
 )
 
+const (
+	filePerm os.FileMode = 0o644 // config file: owner read/write, everyone else read
+	dirPerm  os.FileMode = 0o755 // config dir: owner full access, everyone else read/enter
+)
+
 func Load(path string) (*Config, error) {
 	config := Config{}
 	configFile, err := os.ReadFile(path)
@@ -28,17 +33,16 @@ func Load(path string) (*Config, error) {
 }
 
 func Save(path string, config *Config) error {
-	permission := 0o644
 	file, err := toml.Marshal(config)
 
 	if err != nil {
 		return fmt.Errorf("save: %w", err)
 	}
 
-	errWriteFile := os.WriteFile(path, file, os.FileMode(permission))
+	err = os.WriteFile(path, file, filePerm)
 
-	if errWriteFile != nil {
-		return fmt.Errorf("save: %w", errWriteFile)
+	if err != nil {
+		return fmt.Errorf("save: %w", err)
 	}
 
 	return nil
@@ -46,9 +50,6 @@ func Save(path string, config *Config) error {
 
 func SaveInitial(path string) error {
 	config := Config{Version: 1}
-
-	// TODO: Add syncing with existing configuration. There might be something existing,
-	// therefore this need to be added
 
 	err := Save(path, &config)
 
@@ -76,9 +77,9 @@ func initConfigIfNeeded() error {
 		return nil
 	}
 
-	errNewConfig := createNewConfig(homeDir)
-	if errNewConfig != nil {
-		return fmt.Errorf("init config if needed: %w", errNewConfig)
+	err = createNewConfig(homeDir)
+	if err != nil {
+		return fmt.Errorf("init config if needed: %w", err)
 	}
 
 	return nil
@@ -102,17 +103,16 @@ func configExists(dir string) (bool, error) {
 func createNewConfig(dir string) error {
 	path := filepath.Join(dir, configPath())
 
-	permission := os.FileMode(0o755)
-	errDir := os.MkdirAll(filepath.Dir(path), permission)
+	err := os.MkdirAll(filepath.Dir(path), dirPerm)
 
-	if errDir != nil {
-		return fmt.Errorf("create new config: %w, %s", errDir, path)
+	if err != nil {
+		return fmt.Errorf("create new config: %w, %s", err, path)
 	}
 
-	errFile := SaveInitial(path)
+	err = SaveInitial(path)
 
-	if errFile != nil {
-		return fmt.Errorf("create new config: %w, %s", errFile, path)
+	if err != nil {
+		return fmt.Errorf("create new config: %w, %s", err, path)
 	}
 
 	return nil
