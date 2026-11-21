@@ -17,8 +17,13 @@ func Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("load: %w", err)
 	}
 
-	toml.Unmarshal(configFile, &config)
-	return &config, err
+	err = toml.Unmarshal(configFile, &config)
+
+	if err != nil {
+		return nil, fmt.Errorf("load: %q", err)
+	}
+
+	return &config, nil
 }
 
 func Save(path string, config *Config) error {
