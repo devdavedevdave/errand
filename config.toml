@@ -1,0 +1,26 @@
+version = 1
+
+[[jobs]]
+id = "checkout-project"
+name = "Checkout project"
+script = "~/scripts/checkout.sh"
+
+    # [jobs.triggers] (single brackets) = ONE table belonging to the job above.
+    # It maps to `Triggers Triggers` in job.go. Only set the fields you need;
+    # everything else keeps its zero value.
+    [jobs.triggers]
+    login = true
+    calendar = [
+        { hour = 4, minute = 0 },
+    ]
+    # Removed from the old version: `day = 1` (CalendarTime has no Day field yet,
+    # so it would be silently ignored) and `second = 0` (launchd's
+    # StartCalendarInterval has no seconds at all).
+
+[[jobs]]
+id = "sort-screenshots"
+name = "Sort screenshots"
+script = "~/scripts/sort-screenshots.sh"
+
+    [jobs.triggers]
+    watch = ["~/Desktop"]
