@@ -1,0 +1,5 @@
+# Missing closing quote -> not valid TOML at all
+version = 1
+
+[[jobs]]
+id = "sort-screenshots

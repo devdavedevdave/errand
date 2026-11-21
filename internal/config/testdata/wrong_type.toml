@@ -1,0 +1,2 @@
+# Valid TOML, but version must be an int, not a string
+version = "one"

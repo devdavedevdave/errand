@@ -60,7 +60,7 @@ func SaveInitial(path string) error {
 	return nil
 }
 
-func initConfigIfNeeded() error {
+func InitConfigIfNeeded() error {
 	homeDir, err := os.UserHomeDir()
 
 	if err != nil {

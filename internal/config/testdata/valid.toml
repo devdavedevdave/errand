@@ -1,0 +1,14 @@
+version = 1
+
+[[jobs]]
+id = "sort-screenshots"
+name = "Sort screenshots"
+script = "~/scripts/sort-screenshots.sh"
+
+    [jobs.triggers]
+    login = true
+    interval = 3600
+    watch = ["~/Desktop"]
+    calendar = [
+        { hour = 4, minute = 30 },
+    ]
