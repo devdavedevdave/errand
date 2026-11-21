@@ -15,6 +15,9 @@ const (
 	dirPerm  os.FileMode = 0o755 // config dir: owner full access, everyone else read/enter
 )
 
+// TODO: Currently Unmarshal is used, which basically doesn't
+// pay attention to typos such as
+
 func Load(path string) (*Config, error) {
 	config := Config{}
 	configFile, err := os.ReadFile(path)

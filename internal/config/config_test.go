@@ -3,12 +3,16 @@ package config
 import (
 	"errors"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
 )
 
+// -------------------------------
 // Load
+// -------------------------------
+
 func TestLoadConfigValidToml(t *testing.T) {
 	testPath := "testdata/valid.toml"
 
@@ -79,7 +83,63 @@ func TestLoadConfigInvalidToml(t *testing.T) {
 	}
 }
 
+// -------------------------------
 // Save
+// -------------------------------
+
+func TestSaveConfigValidToml(t *testing.T) {
+	want := Config{
+		Version: 1,
+		Jobs: []Job{
+			{
+				ID:     "sort-screenshots",
+				Name:   "Sort screenshots",
+				Script: "~/scripts/sort-screenshots.sh",
+				Triggers: Triggers{
+					Login:    true,
+					Interval: 3600,
+					Watch:    []string{"~/Desktop"},
+					Calendar: []CalendarTime{{Hour: 4, Minute: 30}},
+				},
+			},
+		},
+	}
+
+	path := filepath.Join(os.TempDir(), "validToml.xml")
+
+	err := Save(path, &want)
+
+	if err == nil {
+		t.Fatalf("Load(%q) returned no error, want one", path)
+	}
+}
+
+func TestSaveConfigInvalidToml(t *testing.T) {
+	want := Config{
+		Version: 1,
+		Jobs: []Job{
+			{
+				ID:     "sort-screenshots",
+				Name:   "Sort screenshots",
+				Script: "~/scripts/sort-screenshots.sh",
+				Triggers: Triggers{
+					Login:    true,
+					Interval: 3600,
+					Watch:    []string{"~/Desktop"},
+					Calendar: []CalendarTime{{Hour: 4, Minute: 30}},
+				},
+			},
+		},
+	}
+
+	path := filepath.Join(os.TempDir(), "validToml.xml")
+
+	err := Save(path, &want)
+
+	if err == nil {
+		t.Fatalf("Load(%q) returned no error, want one", path)
+	}
+}
 
 // SaveInitial
 
