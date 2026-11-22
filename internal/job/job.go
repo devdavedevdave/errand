@@ -1,15 +1,13 @@
-package config
-
-type Config struct {
-	Version int   `toml:"version"`
-	Jobs    []Job `toml:"jobs"`
-}
+package job
 
 type Job struct {
 	ID       string   `toml:"id"`
 	Name     string   `toml:"name"`
 	Script   string   `toml:"script"`
 	Triggers Triggers `toml:"triggers"`
+	// Env holds environment variables for this job only. Entries override
+	// the global [env] table with the same name.
+	Env map[string]string `toml:"env"`
 }
 
 type Triggers struct {

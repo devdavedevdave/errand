@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"errand/internal/job"
 )
 
 // -------------------------------
@@ -23,17 +25,19 @@ func TestLoadConfigValidToml(t *testing.T) {
 
 	want := Config{
 		Version: 1,
-		Jobs: []Job{
+		Env:     map[string]string{"LANG": "en_US.UTF-8"},
+		Jobs: []job.Job{
 			{
 				ID:     "sort-screenshots",
 				Name:   "Sort screenshots",
 				Script: "~/scripts/sort-screenshots.sh",
-				Triggers: Triggers{
+				Triggers: job.Triggers{
 					Login:    true,
 					Interval: 3600,
 					Watch:    []string{"~/Desktop"},
-					Calendar: []CalendarTime{{Hour: 4, Minute: 30}},
+					Calendar: []job.CalendarTime{{Hour: 4, Minute: 30}},
 				},
+				Env: map[string]string{"PATH": "/opt/homebrew/bin:/usr/bin:/bin"},
 			},
 		},
 	}
@@ -90,16 +94,16 @@ func TestLoadConfigInvalidToml(t *testing.T) {
 func TestSaveConfigValidToml(t *testing.T) {
 	want := Config{
 		Version: 1,
-		Jobs: []Job{
+		Jobs: []job.Job{
 			{
 				ID:     "sort-screenshots",
 				Name:   "Sort screenshots",
 				Script: "~/scripts/sort-screenshots.sh",
-				Triggers: Triggers{
+				Triggers: job.Triggers{
 					Login:    true,
 					Interval: 3600,
 					Watch:    []string{"~/Desktop"},
-					Calendar: []CalendarTime{{Hour: 4, Minute: 30}},
+					Calendar: []job.CalendarTime{{Hour: 4, Minute: 30}},
 				},
 			},
 		},

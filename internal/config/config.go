@@ -7,8 +7,18 @@ import (
 	"os"
 	"path/filepath"
 
+	"errand/internal/job"
+
 	"github.com/pelletier/go-toml/v2"
 )
+
+type Config struct {
+	Version int `toml:"version"`
+	// Env holds environment variables for every job. A job's own Env
+	// overrides entries with the same name.
+	Env  map[string]string `toml:"env"`
+	Jobs []job.Job         `toml:"jobs"`
+}
 
 const (
 	filePerm os.FileMode = 0o644 // config file: owner read/write, everyone else read

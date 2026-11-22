@@ -1,5 +1,8 @@
 version = 1
 
+[env]
+LANG = "en_US.UTF-8"
+
 [[jobs]]
 id = "sort-screenshots"
 name = "Sort screenshots"
@@ -12,3 +15,6 @@ script = "~/scripts/sort-screenshots.sh"
     calendar = [
         { hour = 4, minute = 30 },
     ]
+
+    [jobs.env]
+    PATH = "/opt/homebrew/bin:/usr/bin:/bin"
