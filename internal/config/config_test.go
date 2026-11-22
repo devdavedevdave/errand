@@ -147,9 +147,153 @@ func TestSaveConfigInvalidToml(t *testing.T) {
 // InitConfigIfNeeded
 // -------------------------------
 
+// InitConfigIfNeeded finds the home directory itself via os.UserHomeDir,
+// which reads $HOME on macOS. t.Setenv points $HOME at a temp dir for the
+// duration of one test and restores it afterwards, so the real
+// ~/.config/errand is never touched.
+
+func TestInitConfigIfNeededCreatesMissingConfig(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	err := InitConfigIfNeeded()
+
+	if err != nil {
+		t.Fatalf("InitConfigIfNeeded() returned error: %v", err)
+	}
+
+	path := filepath.Join(home, configPath())
+	got, err := Load(path)
+
+	if err != nil {
+		t.Fatalf("Load(%q) after InitConfigIfNeeded: %v", path, err)
+	}
+
+	if got.Version != 1 {
+		t.Errorf("Load(%q) Version = %d, want 1", path, got.Version)
+	}
+}
+
+func TestInitConfigIfNeededKeepsExistingConfig(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	// An existing config that differs from the initial one, so an
+	// accidental overwrite would be visible.
+	path := filepath.Join(home, configPath())
+	existing := []byte("version = 1\n\n[[jobs]]\nid = \"keep-me\"\n")
+
+	if err := os.MkdirAll(filepath.Dir(path), dirPerm); err != nil {
+		t.Fatalf("MkdirAll(%q): %v", filepath.Dir(path), err)
+	}
+
+	if err := os.WriteFile(path, existing, filePerm); err != nil {
+		t.Fatalf("WriteFile(%q): %v", path, err)
+	}
+
+	err := InitConfigIfNeeded()
+
+	if err != nil {
+		t.Fatalf("InitConfigIfNeeded() returned error: %v", err)
+	}
+
+	got, err := os.ReadFile(path)
+
+	if err != nil {
+		t.Fatalf("ReadFile(%q): %v", path, err)
+	}
+
+	if string(got) != string(existing) {
+		t.Errorf("config was changed\n got: %q\nwant: %q", got, existing)
+	}
+}
+
+func TestInitConfigIfNeededFailure(t *testing.T) {
+	tests := []struct {
+		name string
+		// setup prepares $HOME so that InitConfigIfNeeded fails.
+		setup func(t *testing.T)
+	}{
+		{
+			// os.UserHomeDir returns an error when $HOME is empty.
+			name: "home dir unknown",
+			setup: func(t *testing.T) {
+				t.Setenv("HOME", "")
+			},
+		},
+		{
+			// A regular file where ".config" should be makes os.Stat fail
+			// with ENOTDIR, so configExists returns an error.
+			name: "config check fails",
+			setup: func(t *testing.T) {
+				home := t.TempDir()
+				t.Setenv("HOME", home)
+
+				blocker := filepath.Join(home, ".config")
+				if err := os.WriteFile(blocker, nil, filePerm); err != nil {
+					t.Fatalf("WriteFile(%q): %v", blocker, err)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setup(t)
+
+			err := InitConfigIfNeeded()
+
+			if err == nil {
+				t.Errorf("InitConfigIfNeeded() returned no error, want one")
+			}
+		})
+	}
+}
+
 // -------------------------------
 // SaveInitial
 // -------------------------------
+
+func TestSaveInitialWritesInitialConfig(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.toml")
+
+	err := SaveInitial(path)
+
+	if err != nil {
+		t.Fatalf("SaveInitial(%q) returned error: %v", path, err)
+	}
+
+	got, err := Load(path)
+
+	if err != nil {
+		t.Fatalf("Load(%q) after SaveInitial: %v", path, err)
+	}
+
+	if got.Version != 1 {
+		t.Errorf("Load(%q) Version = %d, want 1", path, got.Version)
+	}
+
+	if len(got.Jobs) != 0 {
+		t.Errorf("Load(%q) Jobs = %+v, want none", path, got.Jobs)
+	}
+}
+
+func TestSaveInitialFailure(t *testing.T) {
+	// The parent directory doesn't exist, so the write inside Save fails.
+	path := filepath.Join(t.TempDir(), "missing", "config.toml")
+
+	err := SaveInitial(path)
+
+	if err == nil {
+		t.Fatalf("SaveInitial(%q) returned no error, want one", path)
+	}
+
+	// Each layer wraps with %w, so the original cause must still be
+	// reachable through the chain save initial -> save -> os.WriteFile.
+	if !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("SaveInitial(%q) error = %v, want it to wrap fs.ErrNotExist", path, err)
+	}
+}
 
 // -------------------------------
 // Config Exists
