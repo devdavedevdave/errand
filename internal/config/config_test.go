@@ -226,39 +226,74 @@ func TestConfigExistsStatFails(t *testing.T) {
 // -------------------------------
 
 func TestCreateNewConfigSuccess(t *testing.T) {
-	dir := os.TempDir()
+	dir := t.TempDir()
+
 	err := createNewConfig(dir)
 
 	if err != nil {
-		t.Fatalf("CreateNewConfig: %s", dir)
+		t.Fatalf("createNewConfig(%q) returned error: %v", dir, err)
 	}
 
-	exists, err := configExists(dir)
+	// Checking that the file exists isn't enough: it must also contain the
+	// initial config, so load it back and compare.
+	path := filepath.Join(dir, configPath())
+	got, err := Load(path)
 
 	if err != nil {
-		t.Fatalf("ConfigExists: %v", err)
+		t.Fatalf("Load(%q) after createNewConfig: %v", path, err)
 	}
 
-	if !exists {
-		t.Errorf("Config exists is false, want true, Error: %err", err)
+	// Compare fields instead of reflect.DeepEqual: the round trip turns a nil
+	// Jobs slice into an empty, non-nil one, and DeepEqual treats those as different.
+	if got.Version != 1 {
+		t.Errorf("Load(%q) Version = %d, want 1", path, got.Version)
+	}
+
+	if len(got.Jobs) != 0 {
+		t.Errorf("Load(%q) Jobs = %+v, want none", path, got.Jobs)
 	}
 }
 
 func TestCreateNewConfigFailure(t *testing.T) {
-	dir := os.TempDir()
-	err := createNewConfig(dir)
-
-	if err != nil {
-		t.Fatalf("CreateNewConfig: %s", dir)
+	tests := []struct {
+		name string
+		// setup puts something in dir that makes createNewConfig fail.
+		setup func(t *testing.T, dir string)
+	}{
+		{
+			// A regular file where the ".config" directory should be,
+			// so os.MkdirAll can't create ".config/errand".
+			name: "mkdir fails",
+			setup: func(t *testing.T, dir string) {
+				blocker := filepath.Join(dir, ".config")
+				if err := os.WriteFile(blocker, nil, filePerm); err != nil {
+					t.Fatalf("WriteFile(%q): %v", blocker, err)
+				}
+			},
+		},
+		{
+			// A directory where config.toml should be, so MkdirAll
+			// succeeds but SaveInitial can't write the file.
+			name: "save fails",
+			setup: func(t *testing.T, dir string) {
+				blocker := filepath.Join(dir, configPath())
+				if err := os.MkdirAll(blocker, dirPerm); err != nil {
+					t.Fatalf("MkdirAll(%q): %v", blocker, err)
+				}
+			},
+		},
 	}
 
-	exists, err := configExists(dir)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			tt.setup(t, dir)
 
-	if err != nil {
-		t.Fatalf("ConfigExists: %v", err)
+			err := createNewConfig(dir)
+
+			if err == nil {
+				t.Errorf("createNewConfig(%q) returned no error, want one", dir)
+			}
+		})
 	}
-
-	if !exists {
-		t.Errorf("Config exists is false, want true, Error: %err", err)
-	}	
 }
